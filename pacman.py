@@ -2,22 +2,36 @@ from random import choice
 from turtle import *
 from freegames import floor, vector
 
+# -------- SOUND --------
+try:
+    import winsound
+    def play_sound():
+        winsound.Beep(800, 80)
+except:
+    def play_sound():
+        pass
+
 # ---------------- STATE ----------------
-state = {'score': 0, 'running': False, 'paused': False}
+state = {
+    'score': 0,
+    'running': False,
+    'paused': False,
+    'show_rules': False
+}
 
 path = Turtle(visible=False)
 writer = Turtle(visible=False)
 menu = Turtle(visible=False)
 ui = Turtle(visible=False)
 
-aim = vector(5, 0)
+aim = vector(0, 0)
 pacman = vector(-40, -80)
 
 ghosts = [
-    [vector(-180, 160), vector(5, 0)],
-    [vector(-180, -160), vector(0, 5)],
-    [vector(100, 160), vector(0, -5)],
-    [vector(100, -160), vector(-5, 0)],
+    [vector(-180, 160), vector(4, 0)],
+    [vector(-180, -160), vector(0, 4)],
+    [vector(100, 160), vector(0, -4)],
+    [vector(100, -160), vector(-4, 0)],
 ]
 
 # ---------------- MAP ----------------
@@ -47,37 +61,55 @@ tiles = [
 # ---------------- MENU ----------------
 def draw_menu():
     clear()
-    writer.clear()
-    path.clear()
-    ui.clear()
     menu.clear()
-
-    bgcolor("black")
+    bgcolor("#0a0a23")
 
     menu.penup()
-    menu.color("yellow")
-    menu.goto(0, 100)
-    menu.write("PACMAN", align="center", font=("Arial", 36, "bold"))
 
-    menu.goto(0, 20)
+    menu.goto(0, 120)
+    menu.color("cyan")
+    menu.write("P  A  C  M  A  N", align="center", font=("Arial", 48, "bold"))
+
+    menu.goto(0, 40)
     menu.color("white")
-    menu.write("PLAY GAME", align="center", font=("Arial", 18, "bold"))
+    menu.write("▶ PLAY GAME", align="center", font=("Arial", 22, "bold"))
 
-    menu.goto(0, -40)
-    menu.write("QUIT", align="center", font=("Arial", 18, "bold"))
+    menu.goto(0, -20)
+    menu.write("✖ QUIT", align="center", font=("Arial", 22, "bold"))
 
+    menu.goto(0, -80)
+    menu.write("ℹ INSTRUCTIONS", align="center", font=("Arial", 20, "bold"))
+
+    if state['show_rules']:
+        draw_rules()
+
+def draw_rules():
+    rules = [
+        "Use Arrow Keys to move",
+        "Eat white dots to score",
+        "Avoid red ghosts",
+        "If caught → Game Over"
+    ]
+
+    y = -140
+    for r in rules:
+        menu.goto(0, y)
+        menu.write(r, align="center", font=("Arial", 14))
+        y -= 25
+
+# ---------------- CLICK ----------------
 def click(x, y):
     if not state['running']:
-        if -50 < y < 50:
+        if -120 < x < 120 and 20 < y < 60:
             start_game()
-        elif -100 < y < -20:
+        elif -120 < x < 120 and -20 < y < 20:
             bye()
+        elif -120 < x < 120 and -100 < y < -60:
+            state['show_rules'] = not state['show_rules']
+            draw_menu()
     else:
-        # Pause / Resume
         if -200 < x < -120 and 130 < y < 210:
             toggle_pause()
-
-        # ✅ FIXED Quit
         elif 50 < x < 250 and 120 < y < 220:
             quit_game()
 
@@ -88,15 +120,12 @@ def draw_controls():
     ui.color("white")
 
     ui.goto(-180, 180)
-    if state['paused']:
-        ui.write("Resume")
-    else:
-        ui.write("Pause")
+    ui.write("Resume" if state['paused'] else "Pause")
 
     ui.goto(120, 180)
     ui.write("Quit")
 
-# ---------------- ORIGINAL GAME ----------------
+# ---------------- GAME ----------------
 def square(x, y):
     path.up()
     path.goto(x, y)
@@ -152,9 +181,17 @@ def move():
         pacman.move(aim)
 
     index = offset(pacman)
+
     if tiles[index] == 1:
+        play_sound()
         tiles[index] = 2
         state['score'] += 1
+
+        x = (index % 20) * 20 - 200
+        y = 180 - (index // 20) * 20
+
+        path.color('blue')
+        square(x, y)
 
     up()
     goto(pacman.x + 10, pacman.y + 10)
@@ -164,7 +201,7 @@ def move():
         if valid(point + course):
             point.move(course)
         else:
-            options = [vector(5,0), vector(-5,0), vector(0,5), vector(0,-5)]
+            options = [vector(4,0), vector(-4,0), vector(0,4), vector(0,-4)]
             plan = choice(options)
             course.x = plan.x
             course.y = plan.y
@@ -181,7 +218,7 @@ def move():
             quit_game()
             return
 
-    ontimer(move, 50)
+    ontimer(move, 80)
 
 def change(x, y):
     if valid(pacman + vector(x, y)):
@@ -208,15 +245,7 @@ def toggle_pause():
     state['paused'] = not state['paused']
 
 def quit_game():
-    state['running'] = False
-    state['paused'] = False
-
-    clear()
-    writer.clear()
-    ui.clear()
-    path.clear()
-
-    draw_menu()
+    bye()
 
 # ---------------- SETUP ----------------
 setup(width=1.0, height=1.0)
